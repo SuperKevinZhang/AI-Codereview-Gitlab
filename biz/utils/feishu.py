@@ -2,18 +2,56 @@ import json
 import requests
 import os
 import re
+import hashlib
+import base64
+import hmac
+import time
+import urllib.parse
+
 from biz.utils.log import logger
 
 
 class FeishuNotifier:
-    def __init__(self, webhook_url=None):
+    def __init__(self, webhook_url=None, project_name=None):
         """
         初始化飞书通知器
         :param webhook_url: 飞书机器人webhook地址
         """
-        self.webhook_url = webhook_url or os.environ.get('FEISHU_WEBHOOK_URL', '')
         self.enabled = os.environ.get('FEISHU_ENABLED', '0') == '1'
 
+        #打印项目名称
+        logger.info(f"项目名称:{project_name}")
+        # 项目名称{'DMP'}是这个结构的，改为只要DMP这个内容
+        # 判断是否为空或None
+        if project_name and project_name != None:
+            project_name = list(project_name)[0]  # 将集合转换为列表，并获取第一个元素
+           
+        logger.info(f"项目名称:{project_name}")
+        logger.info(f'FEISHU_WEBHOOK_URL_{project_name}')
+        logger.info(f"飞书webhook:{os.environ.get(f'FEISHU_WEBHOOK_URL_{project_name}', '')}")
+
+        if project_name:
+            self.webhook_url = webhook_url or os.environ.get(f'FEISHU_WEBHOOK_URL_{project_name}', '') or os.environ.get('FEISHU_WEBHOOK_URL', '')
+        else:
+            self.webhook_url = webhook_url or os.environ.get('FEISHU_WEBHOOK_URL', '')
+        self.secret = os.environ.get(f'FEISHU_SECRET_{project_name}', '') or os.environ.get('FEISHU_SECRET', '')
+
+    def gen_sign(self, timestamp, secret):
+        # 拼接timestamp和secret
+        logger.info(f"timestamp:{timestamp}, secret:{secret}")
+        string_to_sign = '{}\n{}'.format(timestamp, secret)
+        hmac_code = hmac.new(string_to_sign.encode("utf-8"), digestmod=hashlib.sha256).digest()
+        # 对结果进行base64处理
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac_code).decode('utf-8'))
+        return sign
+    
+    def _get_post_url(self):
+        if not self.secret:
+            return self.webhook_url
+        timestamp = str(round(time.time()))
+        sign = self.gen_sign(timestamp, self.secret)
+        return f"{self.webhook_url}?timestamp={timestamp}&sign={sign}"
+    
     def send_message(self, content, msg_type='text', title=None, is_at_all=False):
         """
         发送飞书消息
@@ -79,8 +117,9 @@ class FeishuNotifier:
                     },
                 }
 
+            logger.info(f"发送飞书Url: {self._get_post_url()}")
             response = requests.post(
-                self.webhook_url,
+                self._get_post_url(),
                 json=data,
                 headers={'Content-Type': 'application/json'}
             )

@@ -32,7 +32,7 @@ class DingTalkNotifier:
             self.webhook_url = webhook_url or os.environ.get(f'DINGTALK_WEBHOOK_URL_{project_name}', '') or os.environ.get('DINGTALK_WEBHOOK_URL', '')
         else:
             self.webhook_url = webhook_url or os.environ.get('DINGTALK_WEBHOOK_URL', '')
-        self.secret = os.environ.get('DINGTALK_SECRET', None)
+        self.secret = os.environ.get(f'DINGTALK_SECRET_{project_name}', '') or os.environ.get('DINGTALK_SECRET', '')
 
     def _generate_signature(self):
         timestamp = str(round(time.time() * 1000))
