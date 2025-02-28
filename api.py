@@ -105,6 +105,7 @@ def handle_webhook():
 
         # 打印整个payload数据，或根据需求进行处理
         logger.info(f'Received event: {event_type}')
+        logger.info(f'Headers: {request.headers}')
         logger.info(f'Payload: {json.dumps(data)}')
 
         # 处理Merge Request Hook
@@ -337,7 +338,7 @@ def send_notification(content, msg_type='text', title="通知", is_at_all=False,
     wecom_notifier.send_message(content=content, msg_type=msg_type, title=title, is_at_all=is_at_all)
 
     # 飞书推送
-    feishu_notifier = FeishuNotifier()
+    feishu_notifier = FeishuNotifier(project_name = project)
     feishu_notifier.send_message(content=content, msg_type=msg_type, title=title, is_at_all=is_at_all)
 
 
